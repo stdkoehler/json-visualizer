@@ -10,8 +10,8 @@ export default defineConfig({
     rollupOptions: {
       input: resolve(__dirname, 'index.html'),
       output: {
-        entryFileNames: `assets/index.js`,
-        chunkFileNames: `assets/[name].js`,
+        entryFileNames: `assets/index.jsx`,
+        chunkFileNames: `assets/[name].jsx`,
         assetFileNames: `assets/[name].[ext]`,
       },
     },
