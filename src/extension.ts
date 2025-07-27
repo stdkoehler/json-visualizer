@@ -33,7 +33,7 @@ export function activate(context: vscode.ExtensionContext) {
         });
 
         const scriptUri = panel.webview.asWebviewUri(
-          vscode.Uri.joinPath(context.extensionUri, 'media', 'assets/index.jsx')
+          vscode.Uri.joinPath(context.extensionUri, 'media', 'assets/index.js')
         );
 
         const styleUri = panel.webview.asWebviewUri(
