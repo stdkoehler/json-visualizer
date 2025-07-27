@@ -1,26 +1,75 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as path from 'path';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+let panel: vscode.WebviewPanel | undefined;
+
 export function activate(context: vscode.ExtensionContext) {
+  context.subscriptions.push(
+    vscode.commands.registerCommand('d3Visualizer.visualizeVariable', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "json-visualizer" is now active!');
+      const selection = editor.selection;
+      const selectedText = editor.document.getText(selection);
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('json-visualizer.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from json-visualizer!');
-	});
+      const mockJson = {
+        name: selectedText,
+        values: [1, 2, 3, 4, 5]
+      };
 
-	context.subscriptions.push(disposable);
+      if (!panel) {
+        panel = vscode.window.createWebviewPanel(
+          'd3Visualizer',
+          'D3 Variable Visualizer',
+          vscode.ViewColumn.Beside,
+          {
+            enableScripts: true,
+            localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')],
+          }
+        );
+
+        panel.onDidDispose(() => {
+          panel = undefined;
+        });
+
+        const scriptUri = panel.webview.asWebviewUri(
+          vscode.Uri.joinPath(context.extensionUri, 'media', 'assets/index.js')
+        );
+
+        const styleUri = panel.webview.asWebviewUri(
+          vscode.Uri.joinPath(context.extensionUri, 'media', 'assets/index.css')
+        );
+
+        const nonce = getNonce();
+
+        panel.webview.html = /* html */ `
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${panel.webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link href="${styleUri}" rel="stylesheet" />
+            <title>D3 Visualizer</title>
+          </head>
+          <body>
+            <div id="root"></div>
+            <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
+          </body>
+          </html>
+        `;
+      }
+
+      panel.webview.postMessage({ type: 'updateData', payload: mockJson });
+    })
+  );
 }
 
-// This method is called when your extension is deactivated
-export function deactivate() {}
+function getNonce() {
+  let text = '';
+  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  for (let i = 0; i < 32; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
+}
