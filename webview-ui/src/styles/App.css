@@ -177,7 +177,7 @@ main {
 /* --- D3 Specific Styles --- */
 /* Marker Arrowhead */
 .arrowhead-path {
-  fill: var(--vscode-list-activeSelectionForeground, #9AA0A6);
+  fill: var(--vscode-editorBracketHighlight-foreground3, #5f6368);
 }
 
 /* Cell Dividers */
@@ -215,11 +215,11 @@ main {
 }
 
 .node-group rect.object-box {
-  stroke: var(--vscode-focusBorder, #4285F4);
+  stroke: var(--vscode-editorBracketHighlight-foreground3, #5f6368);
 }
 
 .node-group rect.array-box {
-  stroke: var(--vscode-symbolIcon-arrayForeground, #34A853);
+  stroke: var(--vscode-editorBracketHighlight-foreground1, #34A853);
   stroke-dasharray: 5 3;
 }
 
@@ -233,11 +233,11 @@ main {
 }
 
 .node-text-object {
-  fill: var(--vscode-list-activeSelectionForeground, #5f6368);
+  fill: var(--vscode-editorBracketHighlight-foreground3, #5f6368);
 }
 
 .node-text-array {
-  fill: var(--vscode-symbolIcon-arrayForeground, #34A853);
+  fill: var(--vscode-editorBracketHighlight-foreground1, #34A853);
 }
 
 .node-title {
@@ -256,12 +256,12 @@ main {
 }
 
 .field-value {
-  fill: var(--vscode-chat-avatarForeground, #d93025);
+  fill: var(--vscode-editorHint-foreground, #5f6368);
   font-weight: 400;
 }
 
 .node-child-link {
-  /*fill: var(--vscode-list-activeSelectionForeground, #5f6368);*/
+  /*fill: var(--vscode-editorBracketHighlight-foreground3, #5f6368);*/
   font-style: normal;
   font-weight: 400;
   font-size: 12.5px;
@@ -273,14 +273,14 @@ main {
 }
 
 .child-link-dot {
-  fill: var(--vscode-list-activeSelectionForeground, #9AA0A6); /* Match link color */
+  fill: var(--vscode-editorBracketHighlight-foreground3, #5f6368); /* Match link color */
   stroke: none;
 }
 /* --- End New Styles --- */
 
 /* Links (now styled directly in D3 component) */
 .link {
-  stroke: var(--vscode-list-activeSelectionForeground, #9AA0A6);
+  stroke: var(--vscode-editorBracketHighlight-foreground3, #5f6368);
   stroke-opacity: 0.8;
   stroke-width: 1px;
   fill: none;
