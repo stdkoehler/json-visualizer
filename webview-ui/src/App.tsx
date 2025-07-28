@@ -38,6 +38,27 @@ function getEmptyHierarchy(): HierarchyNode {
   };
 }
 
+function getAllExpandablePaths(node: HierarchyNode, parentPath: string = "root"): string[] {
+  const paths: string[] = [];
+  const path = parentPath + (node.name ? "/" + node.name : "");
+  if (node.type === "object" && node.children) {
+    node.children.forEach((child) => {
+      const childPath = path + "/" + child.name;
+      paths.push(childPath);
+      paths.push(...getAllExpandablePaths(child, path));
+    });
+  } else if (node.type === "array" && node.items) {
+    node.items.forEach((item) => {
+      if ((item as any).type === "object" || (item as any).type === "array") {
+        const childPath = path + "/" + (item as HierarchyNode).name;
+        paths.push(childPath);
+        paths.push(...getAllExpandablePaths(item as HierarchyNode, path));
+      }
+    });
+  }
+  return paths;
+}
+
 function App() {
   const [jsonString, setJsonString] = useState(
     JSON.stringify(initialJson, null, 2)
@@ -57,6 +78,7 @@ function App() {
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
   }, []);
+
   const { graphData, error } = useMemo(() => {
     try {
       const parsedJson = JSON.parse(jsonString);
@@ -70,6 +92,20 @@ function App() {
     }
   }, [jsonString]);
 
+  // Expansion state for the tree (moved up from D3Visualization)
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(["root"]));
+
+  // Expand all: collect all expandable paths and set them
+  const handleExpandAll = () => {
+    const allPaths = getAllExpandablePaths(graphData);
+    setExpanded(new Set(["root", ...allPaths]));
+  };
+
+  // Collapse all: only root is expanded
+  const handleCollapseAll = () => {
+    setExpanded(new Set(["root"]));
+  };
+
   return (
     <div className="app-container">
       <header>
@@ -78,6 +114,10 @@ function App() {
           Edit the JSON in the text area to see the visualization update in
           real-time.
         </p>
+        <div style={{ marginTop: 8 }}>
+          <button onClick={handleExpandAll} style={{ marginRight: 8 }}>Expand All</button>
+          <button onClick={handleCollapseAll}>Collapse All</button>
+        </div>
       </header>
       <main>
         <div className="editor-pane">
@@ -90,7 +130,7 @@ function App() {
           </div>
         </div>
         <div className="visualization-pane">
-          <D3Visualization data={graphData} />
+          <D3Visualization data={graphData} expanded={expanded} setExpanded={setExpanded} />
         </div>
       </main>
     </div>

@@ -15,13 +15,14 @@ function getNodePath(node: HierarchyNode, parentPath: string = "root"): string {
 }
 
 
-const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
+interface D3VisualizationWithExpandProps extends D3VisualizationProps {
+  expanded: Set<string>;
+  setExpanded: React.Dispatch<React.SetStateAction<Set<string>>>;
+}
+
+const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expanded, setExpanded }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // --- Expansion state ---
-  // Set of expanded node paths (root always expanded)
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(["root"]));
 
   /**
    * Recursively build a D3 hierarchy only for expanded nodes, and mark nodes that should be in the tree.
