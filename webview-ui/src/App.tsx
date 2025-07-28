@@ -8,27 +8,27 @@ import type { HierarchyNode } from "./utils/types";
 import { isHierarchyNode } from "./utils/types";
 
 const initialJson = {
-  orderId: "A-789 ",
+  orderId: "A-789",
   customer: {
-    name: "Jane Doe ",
+    name: "Jane Doe",
     contact: {
-      email: "jane.d@email.com ",
-      phone: "555-1234 ",
+      email: "jane.d@email.com",
+      phone: "555-1234",
     },
   },
   items: [
     {
-      product: "Widget ",
+      product: "Widget",
       quantity: 2,
     },
     {
-      product: "Gadget ",
+      product: "Gadget",
       quantity: 1,
     },
-    "Note: Expedite ",
+    "Note: Expedite",
   ],
   numbers: [0, 1, 2, 3],
-  stuff: [{ a: "b " }, { c: "d " }, { e: "f " }, { f: {"h": "i"} }],
+  stuff: [{ a: "b " }, { c: "d " }, { e: "f " }, { f: {"h": "i"} }, "A", [1,2,3,4]],
 };
 
 function getEmptyHierarchy(): HierarchyNode {

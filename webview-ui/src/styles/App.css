@@ -232,6 +232,14 @@ main {
   pointer-events: none;
 }
 
+.node-text-object {
+  fill: var(--vscode-list-activeSelectionForeground, #5f6368);
+}
+
+.node-text-array {
+  fill: var(--vscode-symbolIcon-arrayForeground, #34A853);
+}
+
 .node-title {
   font-weight: 600;
   font-size: 14px;
@@ -248,12 +256,12 @@ main {
 }
 
 .field-value {
-  fill: var(--vscode-editorError-foreground, #d93025);
+  fill: var(--vscode-chat-avatarForeground, #d93025);
   font-weight: 400;
 }
 
 .node-child-link {
-  fill: var(--vscode-list-activeSelectionForeground, #5f6368);
+  /*fill: var(--vscode-list-activeSelectionForeground, #5f6368);*/
   font-style: normal;
   font-weight: 400;
   font-size: 12.5px;

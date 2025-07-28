@@ -205,13 +205,22 @@ function renderCellText(
       node.data.children.forEach((child, index) => {
         const cellIndex = fieldCount + index;
         const cell = cellData[cellIndex];
+        let postfix = "";
+        let typeClass = "";
+        if (child.type === "array") {
+          postfix = ": []";
+          typeClass = "node-text-array";
+        } else if (child.type === "object") {
+          postfix = ": {}";
+          typeClass = "node-text-object";
+        }
         parent
           .append("text")
-          .attr("class", "node-text node-child-link")
+          .attr("class", `node-text node-child-link ${typeClass}`)
           .attr("x", PADDING + 10)
           .attr("y", cell.textY)
           .attr("dominant-baseline", "middle")
-          .text(`${child.name}`);
+          .text(`${child.name}${postfix}`);
       });
     }
   } else if (node.data.type === "array" && node.data.items) {
@@ -233,6 +242,7 @@ function renderCellText(
           .text(`${JSON.stringify(item.value)}`)
           .attr("class", "field-value");
       } else if (isHierarchyNode(item)) {
+        const postfix = item.type === "object" ? "{}" : "[]";
         const text = parent
           .append("text")
           .attr("class", "node-text node-child-link")
@@ -242,7 +252,7 @@ function renderCellText(
         text.append("tspan").text(`${item.name}: `);
         text
           .append("tspan")
-          .text(`${item.type}`)
+          .text(`${postfix}`)
           .attr("font-style", "italic");
       }
     });
