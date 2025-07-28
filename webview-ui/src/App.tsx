@@ -46,7 +46,7 @@ function App() {
   // Notify extension that the webview is ready, and listen for set-json messages
   useEffect(() => {
     // Use VS Code webview API for communication
-    const vscode = (window as any).acquireVsCodeApi ? (window as any).acquireVsCodeApi() : undefined;
+    const vscode = window.acquireVsCodeApi ? window.acquireVsCodeApi() : undefined;
     vscode?.postMessage({ type: 'ready' });
 
     const handler = (event: MessageEvent) => {
