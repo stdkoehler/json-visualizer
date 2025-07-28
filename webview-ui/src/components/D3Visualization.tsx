@@ -334,7 +334,13 @@ function getLinkPath(
     }
   }
   const sourceX = sourceNode.y + sourceNode.width;
-  return `M${sourceX},${adjustedSourceY}L${targetX},${targetY}`;
+  // Draw a cubic Bezier curve from source to target
+  // Control points: horizontally offset from source and target for a smooth curve
+  const c1x = sourceX + 40;
+  const c1y = adjustedSourceY;
+  const c2x = targetX - 40;
+  const c2y = targetY;
+  return `M${sourceX},${adjustedSourceY}C${c1x},${c1y},${c2x},${c2y},${targetX},${targetY}`;
 }
 
 const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expanded, setExpanded }) => {
