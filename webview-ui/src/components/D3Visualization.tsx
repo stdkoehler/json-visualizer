@@ -238,17 +238,18 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
       .text((d) => d.data.name);
 
     // Node content with cell structure
-    node.each(function (d) {
+node.each(function (d) {
+      const node = d as CustomHierarchyNode;
       const parent = d3.select(this);
-      const nodePath = getNodePath(d.data, d.parent ? getNodePath(d.parent.data, d.parent.parent ? getNodePath(d.parent.parent.data) : "root") : "root");
+      const nodePath = getNodePath(node.data, node.parent ? getNodePath(node.parent.data, node.parent.parent ? getNodePath(node.parent.parent.data) : "root") : "root");
 
-      let yOffset = -d.height / 2 + PADDING + LINE_HEIGHT + TITLE_SPACING;
+      let yOffset = -node.height / 2 + PADDING + LINE_HEIGHT + TITLE_SPACING;
       const cellData: { y: number; height: number; hasConnection: boolean; textY: number; childNode?: HierarchyNode; childPath?: string }[] = [];
       const dotsData: { index: number; y: number; childNode: HierarchyNode; childPath: string }[] = [];
 
-      if (d.data.type === "object") {
-        if (d.data.fields) {
-          d.data.fields.forEach(() => {
+      if (node.data.type === "object") {
+        if (node.data.fields) {
+          node.data.fields.forEach(() => {
             const cellY = yOffset - LINE_HEIGHT / 2;
             const textY = yOffset;
             cellData.push({ y: cellY, height: LINE_HEIGHT, hasConnection: false, textY });
@@ -256,8 +257,8 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
           });
         }
         // Always list all children as rows with link-dots, regardless of expansion
-        if (d.data.children) {
-          d.data.children.forEach((child) => {
+        if (node.data.children) {
+          node.data.children.forEach((child) => {
             const cellY = yOffset - LINE_HEIGHT / 2;
             const textY = yOffset;
             const childPath = getNodePath(child, nodePath);
@@ -266,8 +267,8 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
             yOffset += LINE_HEIGHT;
           });
         }
-      } else if (d.data.type === "array" && d.data.items) {
-        d.data.items.forEach((item) => {
+      } else if (node.data.type === "array" && node.data.items) {
+        node.data.items.forEach((item) => {
           const cellY = yOffset - LINE_HEIGHT / 2;
           const textY = yOffset;
           const hasConnection = isHierarchyNode(item);
@@ -294,7 +295,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
           .append("line")
           .attr("class", "cell-divider-top")
           .attr("x1", leftPadding)
-          .attr("x2", (d as CustomHierarchyNode).width - dotAreaWidth)
+          .attr("x2", node.width - dotAreaWidth)
           .attr("y1", cell.y)
           .attr("y2", cell.y);
         if (index === cellData.length - 1) {
@@ -302,7 +303,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
             .append("line")
             .attr("class", "cell-divider-bottom")
             .attr("x1", leftPadding)
-            .attr("x2", (d as CustomHierarchyNode).width - dotAreaWidth)
+            .attr("x2", node.width - dotAreaWidth)
             .attr("y1", cell.y + cell.height)
             .attr("y2", cell.y + cell.height);
         }
@@ -311,7 +312,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
           .attr("class", "cell-hover-area")
           .attr("x", 1)
           .attr("y", cell.y)
-          .attr("width", (d as CustomHierarchyNode).width - 2)
+          .attr("width", node.width - 2)
           .attr("height", cell.height)
           .attr("fill", "transparent")
           .attr("stroke", "none")
@@ -321,7 +322,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
           .attr("class", "cell-background")
           .attr("x", 1)
           .attr("y", cell.y)
-          .attr("width", (d as CustomHierarchyNode).width - 2)
+          .attr("width", node.width - 2)
           .attr("height", cell.height)
           .attr("opacity", 0)
           .attr("rx", 3);
@@ -356,9 +357,9 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
       });
 
       // Step 4: Render text at cell centers (unchanged)
-      if (d.data.type === "object") {
-        if (d.data.fields) {
-          d.data.fields.forEach((field, index) => {
+      if (node.data.type === "object") {
+        if (node.data.fields) {
+          node.data.fields.forEach((field, index) => {
             const cell = cellData[index];
             const text = parent
               .append("text")
@@ -376,9 +377,9 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
               .attr("class", "field-value");
           });
         }
-        if (d.data.children) {
-          const fieldCount = d.data.fields ? d.data.fields.length : 0;
-          d.data.children.forEach((child, index) => {
+        if (node.data.children) {
+          const fieldCount = node.data.fields ? node.data.fields.length : 0;
+          node.data.children.forEach((child, index) => {
             const cellIndex = fieldCount + index;
             const cell = cellData[cellIndex];
             parent
@@ -390,8 +391,8 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
               .text(`${child.name}`);
           });
         }
-      } else if (d.data.type === "array" && d.data.items) {
-        d.data.items.forEach((item, index) => {
+      } else if (node.data.type === "array" && node.data.items) {
+        node.data.items.forEach((item, index) => {
           const cell = cellData[index];
           if (isPrimitiveArrayItem(item)) {
             const text = parent
@@ -432,7 +433,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
           .append("circle")
           .attr("class", "child-link-dot" + (isExpanded ? " expanded" : " collapsed"))
           .attr("data-cell-index", dot.index)
-          .attr("cx", (d as CustomHierarchyNode).width)
+          .attr("cx", node.width)
           .attr("cy", dot.y)
           .attr("r", DOT_RADIUS)
           .attr("fill", isExpanded ? "#4285F4" : "#9AA0A6")
