@@ -27,6 +27,316 @@ interface D3VisualizationWithExpandProps extends D3VisualizationProps {
   setExpanded: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
+
+// Types for cell and dot data
+interface CellData {
+  y: number;
+  height: number;
+  hasConnection: boolean;
+  textY: number;
+  childNode?: HierarchyNode;
+  childPath?: string;
+}
+interface DotData {
+  index: number;
+  y: number;
+  childNode: HierarchyNode;
+  childPath: string;
+}
+
+// Helper to build cell and dot data for a node
+function getCellAndDotData(
+  node: CustomHierarchyNode,
+  nodePath: string,
+  PADDING: number,
+  LINE_HEIGHT: number,
+  TITLE_SPACING: number
+): { cellData: CellData[]; dotsData: DotData[] } {
+  let yOffset = -node.height / 2 + PADDING + LINE_HEIGHT + TITLE_SPACING;
+  const cellData: CellData[] = [];
+  const dotsData: DotData[] = [];
+  if (node.data.type === "object") {
+    if (node.data.fields) {
+      node.data.fields.forEach(() => {
+        const cellY = yOffset - LINE_HEIGHT / 2;
+        const textY = yOffset;
+        cellData.push({ y: cellY, height: LINE_HEIGHT, hasConnection: false, textY });
+        yOffset += LINE_HEIGHT;
+      });
+    }
+    if (node.data.children) {
+      node.data.children.forEach((child) => {
+        const cellY = yOffset - LINE_HEIGHT / 2;
+        const textY = yOffset;
+        const childPath = getNodePath(child, nodePath);
+        cellData.push({ y: cellY, height: LINE_HEIGHT, hasConnection: true, textY, childNode: child, childPath });
+        dotsData.push({ index: cellData.length - 1, y: textY, childNode: child, childPath });
+        yOffset += LINE_HEIGHT;
+      });
+    }
+  } else if (node.data.type === "array" && node.data.items) {
+    node.data.items.forEach((item) => {
+      const cellY = yOffset - LINE_HEIGHT / 2;
+      const textY = yOffset;
+      const hasConnection = isHierarchyNode(item);
+      let childNode: HierarchyNode | undefined = undefined;
+      let childPath: string | undefined = undefined;
+      if (hasConnection) {
+        childNode = item;
+        childPath = getNodePath(childNode, nodePath);
+      }
+      cellData.push({ y: cellY, height: LINE_HEIGHT, hasConnection, textY, childNode, childPath });
+      if (hasConnection && childNode && childPath) {
+        dotsData.push({ index: cellData.length - 1, y: textY, childNode, childPath });
+      }
+      yOffset += LINE_HEIGHT;
+    });
+  }
+  return { cellData, dotsData };
+}
+
+// Helper to render cell backgrounds and hover
+function renderCellBackgrounds(
+  parent: d3.Selection<SVGGElement, unknown, null, undefined>,
+  cellData: CellData[],
+  node: CustomHierarchyNode,
+  dotsData: DotData[],
+  DOT_RADIUS: number
+) {
+  const cellsGroup = parent.append("g").attr("class", "cell-backgrounds");
+  const dotAreaWidth = DOT_RADIUS * 3;
+  const leftPadding = 4;
+  cellData.forEach((cell, index) => {
+    cellsGroup
+      .append("line")
+      .attr("class", "cell-divider-top")
+      .attr("x1", leftPadding)
+      .attr("x2", node.width - dotAreaWidth)
+      .attr("y1", cell.y)
+      .attr("y2", cell.y);
+    if (index === cellData.length - 1) {
+      cellsGroup
+        .append("line")
+        .attr("class", "cell-divider-bottom")
+        .attr("x1", leftPadding)
+        .attr("x2", node.width - dotAreaWidth)
+        .attr("y1", cell.y + cell.height)
+        .attr("y2", cell.y + cell.height);
+    }
+    const cellHoverArea = cellsGroup
+      .append("rect")
+      .attr("class", "cell-hover-area")
+      .attr("x", 1)
+      .attr("y", cell.y)
+      .attr("width", node.width - 2)
+      .attr("height", cell.height)
+      .attr("fill", "transparent")
+      .attr("stroke", "none")
+      .style("cursor", cell.hasConnection ? "pointer" : "default");
+    const cellBackground = cellsGroup
+      .append("rect")
+      .attr("class", "cell-background")
+      .attr("x", 1)
+      .attr("y", cell.y)
+      .attr("width", node.width - 2)
+      .attr("height", cell.height)
+      .attr("opacity", 0)
+      .attr("rx", 3);
+    const correspondingDot = dotsData.find((dot) => dot.index === index);
+    cellHoverArea
+      .on("mouseenter", function () {
+        cellBackground.transition().duration(150).attr("opacity", 0.8);
+        if (correspondingDot) {
+          const dot = parent.select(
+            `.child-link-dot[data-cell-index="${index}"]`
+          );
+          dot
+            .transition()
+            .duration(150)
+            .attr("fill", "#4285F4")
+            .attr("r", DOT_RADIUS + 1);
+        }
+      })
+      .on("mouseleave", function () {
+        cellBackground.transition().duration(150).attr("opacity", 0);
+        if (correspondingDot) {
+          const dot = parent.select(
+            `.child-link-dot[data-cell-index="${index}"]`
+          );
+          dot
+            .transition()
+            .duration(150)
+            .attr("fill", "#9AA0A6")
+            .attr("r", DOT_RADIUS);
+        }
+      });
+  });
+}
+
+// Helper to render cell text
+function renderCellText(
+  parent: d3.Selection<SVGGElement, unknown, null, undefined>,
+  node: CustomHierarchyNode,
+  cellData: CellData[],
+  PADDING: number
+) {
+  if (node.data.type === "object") {
+    if (node.data.fields) {
+      node.data.fields.forEach((field, index) => {
+        const cell = cellData[index];
+        const text = parent
+          .append("text")
+          .attr("class", "node-text node-field")
+          .attr("x", PADDING + 10)
+          .attr("y", cell.textY)
+          .attr("dominant-baseline", "middle");
+        text
+          .append("tspan")
+          .text(`${field.name}: `)
+          .attr("class", "field-key");
+        text
+          .append("tspan")
+          .text(`${JSON.stringify(field.value)}`)
+          .attr("class", "field-value");
+      });
+    }
+    if (node.data.children) {
+      const fieldCount = node.data.fields ? node.data.fields.length : 0;
+      node.data.children.forEach((child, index) => {
+        const cellIndex = fieldCount + index;
+        const cell = cellData[cellIndex];
+        parent
+          .append("text")
+          .attr("class", "node-text node-child-link")
+          .attr("x", PADDING + 10)
+          .attr("y", cell.textY)
+          .attr("dominant-baseline", "middle")
+          .text(`${child.name}`);
+      });
+    }
+  } else if (node.data.type === "array" && node.data.items) {
+    node.data.items.forEach((item, index) => {
+      const cell = cellData[index];
+      if (isPrimitiveArrayItem(item)) {
+        const text = parent
+          .append("text")
+          .attr("class", "node-text node-field")
+          .attr("x", PADDING + 10)
+          .attr("y", cell.textY)
+          .attr("dominant-baseline", "middle");
+        text
+          .append("tspan")
+          .text(`${item.name}: `)
+          .attr("class", "field-key");
+        text
+          .append("tspan")
+          .text(`${JSON.stringify(item.value)}`)
+          .attr("class", "field-value");
+      } else if (isHierarchyNode(item)) {
+        const text = parent
+          .append("text")
+          .attr("class", "node-text node-child-link")
+          .attr("x", PADDING + 10)
+          .attr("y", cell.textY)
+          .attr("dominant-baseline", "middle");
+        text.append("tspan").text(`${item.name}: `);
+        text
+          .append("tspan")
+          .text(`${item.type}`)
+          .attr("font-style", "italic");
+      }
+    });
+  }
+}
+
+// Helper to render child dots
+function renderChildDots(
+  parent: d3.Selection<SVGGElement, unknown, null, undefined>,
+  node: CustomHierarchyNode,
+  dotsData: DotData[],
+  expanded: Set<string>,
+  DOT_RADIUS: number,
+  nodePath: string,
+  handleDotClick: (parentPath: string, childPath: string) => void
+) {
+  const dotsGroup = parent.append("g").attr("class", "child-link-dots");
+  dotsData.forEach((dot) => {
+    const isExpanded = expanded.has(dot.childPath);
+    dotsGroup
+      .append("circle")
+      .attr("class", "child-link-dot" + (isExpanded ? " expanded" : " collapsed"))
+      .attr("data-cell-index", dot.index)
+      .attr("cx", node.width)
+      .attr("cy", dot.y)
+      .attr("r", DOT_RADIUS)
+      .attr("fill", isExpanded ? "#4285F4" : "#9AA0A6")
+      .style("cursor", "pointer")
+      .on("click", (event) => {
+        event.stopPropagation();
+        handleDotClick(nodePath, dot.childPath);
+      });
+  });
+}
+
+// Helper to calculate link path
+function getLinkPath(
+  d: d3.HierarchyLink<HierarchyNode>,
+  PADDING: number,
+  LINE_HEIGHT: number,
+  TITLE_SPACING: number
+) {
+  const sourceNode = d.source as d3.HierarchyNode<HierarchyNode> & {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  const targetNode = d.target as d3.HierarchyNode<HierarchyNode> & {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  const targetX = targetNode.y;
+  const targetY = targetNode.x;
+  let adjustedSourceY = sourceNode.x;
+  const parentData = sourceNode.data;
+  if (parentData.type === "object" && parentData.children) {
+    const childIndex = parentData.children.findIndex(
+      (child) => child.name === targetNode.data.name
+    );
+    if (childIndex !== -1) {
+      const fieldsCount = parentData.fields ? parentData.fields.length : 0;
+      const totalIndex = fieldsCount + childIndex;
+      adjustedSourceY =
+        sourceNode.x -
+        sourceNode.height / 2 +
+        PADDING +
+        LINE_HEIGHT +
+        TITLE_SPACING +
+        totalIndex * LINE_HEIGHT;
+    }
+  } else if (parentData.type === "array" && parentData.items) {
+    const childIndex = parentData.items.findIndex((item) => {
+      if (isHierarchyNode(item)) {
+        return item.name === targetNode.data.name;
+      }
+      return false;
+    });
+    if (childIndex !== -1) {
+      adjustedSourceY =
+        sourceNode.x -
+        sourceNode.height / 2 +
+        PADDING +
+        LINE_HEIGHT +
+        TITLE_SPACING +
+        childIndex * LINE_HEIGHT;
+    }
+  }
+  const sourceX = sourceNode.y + sourceNode.width;
+  return `M${sourceX},${adjustedSourceY}L${targetX},${targetY}`;
+}
+
 const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expanded, setExpanded }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -238,211 +548,28 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
       .text((d) => d.data.name);
 
     // Node content with cell structure
-node.each(function (d) {
+    node.each(function (d) {
       const node = d as CustomHierarchyNode;
       const parent = d3.select(this);
-      const nodePath = getNodePath(node.data, node.parent ? getNodePath(node.parent.data, node.parent.parent ? getNodePath(node.parent.parent.data) : "root") : "root");
-
-      let yOffset = -node.height / 2 + PADDING + LINE_HEIGHT + TITLE_SPACING;
-      const cellData: { y: number; height: number; hasConnection: boolean; textY: number; childNode?: HierarchyNode; childPath?: string }[] = [];
-      const dotsData: { index: number; y: number; childNode: HierarchyNode; childPath: string }[] = [];
-
-      if (node.data.type === "object") {
-        if (node.data.fields) {
-          node.data.fields.forEach(() => {
-            const cellY = yOffset - LINE_HEIGHT / 2;
-            const textY = yOffset;
-            cellData.push({ y: cellY, height: LINE_HEIGHT, hasConnection: false, textY });
-            yOffset += LINE_HEIGHT;
-          });
-        }
-        // Always list all children as rows with link-dots, regardless of expansion
-        if (node.data.children) {
-          node.data.children.forEach((child) => {
-            const cellY = yOffset - LINE_HEIGHT / 2;
-            const textY = yOffset;
-            const childPath = getNodePath(child, nodePath);
-            cellData.push({ y: cellY, height: LINE_HEIGHT, hasConnection: true, textY, childNode: child, childPath });
-            dotsData.push({ index: cellData.length - 1, y: textY, childNode: child, childPath });
-            yOffset += LINE_HEIGHT;
-          });
-        }
-      } else if (node.data.type === "array" && node.data.items) {
-        node.data.items.forEach((item) => {
-          const cellY = yOffset - LINE_HEIGHT / 2;
-          const textY = yOffset;
-          const hasConnection = isHierarchyNode(item);
-          let childNode: HierarchyNode | undefined = undefined;
-          let childPath: string | undefined = undefined;
-          if (hasConnection) {
-            childNode = item;
-            childPath = getNodePath(childNode, nodePath);
-          }
-          cellData.push({ y: cellY, height: LINE_HEIGHT, hasConnection, textY, childNode, childPath });
-          if (hasConnection && childNode && childPath) {
-            dotsData.push({ index: cellData.length - 1, y: textY, childNode, childPath });
-          }
-          yOffset += LINE_HEIGHT;
-        });
-      }
-
-      // Cell backgrounds, hover, etc (unchanged)
-      const cellsGroup = parent.append("g").attr("class", "cell-backgrounds");
-      const dotAreaWidth = DOT_RADIUS * 3;
-      const leftPadding = 4;
-      cellData.forEach((cell, index) => {
-        cellsGroup
-          .append("line")
-          .attr("class", "cell-divider-top")
-          .attr("x1", leftPadding)
-          .attr("x2", node.width - dotAreaWidth)
-          .attr("y1", cell.y)
-          .attr("y2", cell.y);
-        if (index === cellData.length - 1) {
-          cellsGroup
-            .append("line")
-            .attr("class", "cell-divider-bottom")
-            .attr("x1", leftPadding)
-            .attr("x2", node.width - dotAreaWidth)
-            .attr("y1", cell.y + cell.height)
-            .attr("y2", cell.y + cell.height);
-        }
-        const cellHoverArea = cellsGroup
-          .append("rect")
-          .attr("class", "cell-hover-area")
-          .attr("x", 1)
-          .attr("y", cell.y)
-          .attr("width", node.width - 2)
-          .attr("height", cell.height)
-          .attr("fill", "transparent")
-          .attr("stroke", "none")
-          .style("cursor", cell.hasConnection ? "pointer" : "default");
-        const cellBackground = cellsGroup
-          .append("rect")
-          .attr("class", "cell-background")
-          .attr("x", 1)
-          .attr("y", cell.y)
-          .attr("width", node.width - 2)
-          .attr("height", cell.height)
-          .attr("opacity", 0)
-          .attr("rx", 3);
-        const correspondingDot = dotsData.find((dot) => dot.index === index);
-        cellHoverArea
-          .on("mouseenter", function () {
-            cellBackground.transition().duration(150).attr("opacity", 0.8);
-            if (correspondingDot) {
-              const dot = parent.select(
-                `.child-link-dot[data-cell-index="${index}"]`
-              );
-              dot
-                .transition()
-                .duration(150)
-                .attr("fill", "#4285F4")
-                .attr("r", DOT_RADIUS + 1);
-            }
-          })
-          .on("mouseleave", function () {
-            cellBackground.transition().duration(150).attr("opacity", 0);
-            if (correspondingDot) {
-              const dot = parent.select(
-                `.child-link-dot[data-cell-index="${index}"]`
-              );
-              dot
-                .transition()
-                .duration(150)
-                .attr("fill", "#9AA0A6")
-                .attr("r", DOT_RADIUS);
-            }
-          });
-      });
-
-      // Step 4: Render text at cell centers (unchanged)
-      if (node.data.type === "object") {
-        if (node.data.fields) {
-          node.data.fields.forEach((field, index) => {
-            const cell = cellData[index];
-            const text = parent
-              .append("text")
-              .attr("class", "node-text node-field")
-              .attr("x", PADDING + 10)
-              .attr("y", cell.textY)
-              .attr("dominant-baseline", "middle");
-            text
-              .append("tspan")
-              .text(`${field.name}: `)
-              .attr("class", "field-key");
-            text
-              .append("tspan")
-              .text(`${JSON.stringify(field.value)}`)
-              .attr("class", "field-value");
-          });
-        }
-        if (node.data.children) {
-          const fieldCount = node.data.fields ? node.data.fields.length : 0;
-          node.data.children.forEach((child, index) => {
-            const cellIndex = fieldCount + index;
-            const cell = cellData[cellIndex];
-            parent
-              .append("text")
-              .attr("class", "node-text node-child-link")
-              .attr("x", PADDING + 10)
-              .attr("y", cell.textY)
-              .attr("dominant-baseline", "middle")
-              .text(`${child.name}`);
-          });
-        }
-      } else if (node.data.type === "array" && node.data.items) {
-        node.data.items.forEach((item, index) => {
-          const cell = cellData[index];
-          if (isPrimitiveArrayItem(item)) {
-            const text = parent
-              .append("text")
-              .attr("class", "node-text node-field")
-              .attr("x", PADDING + 10)
-              .attr("y", cell.textY)
-              .attr("dominant-baseline", "middle");
-            text
-              .append("tspan")
-              .text(`${item.name}: `)
-              .attr("class", "field-key");
-            text
-              .append("tspan")
-              .text(`${JSON.stringify(item.value)}`)
-              .attr("class", "field-value");
-          } else if (isHierarchyNode(item)) {
-            const text = parent
-              .append("text")
-              .attr("class", "node-text node-child-link")
-              .attr("x", PADDING + 10)
-              .attr("y", cell.textY)
-              .attr("dominant-baseline", "middle");
-            text.append("tspan").text(`${item.name}: `);
-            text
-              .append("tspan")
-              .text(`${item.type}`)
-              .attr("font-style", "italic");
-          }
-        });
-      }
-
-      // Step 5: Render dots at same Y as text, with click handler
-      const dotsGroup = parent.append("g").attr("class", "child-link-dots");
-      dotsData.forEach((dot) => {
-        const isExpanded = expanded.has(dot.childPath);
-        dotsGroup
-          .append("circle")
-          .attr("class", "child-link-dot" + (isExpanded ? " expanded" : " collapsed"))
-          .attr("data-cell-index", dot.index)
-          .attr("cx", node.width)
-          .attr("cy", dot.y)
-          .attr("r", DOT_RADIUS)
-          .attr("fill", isExpanded ? "#4285F4" : "#9AA0A6")
-          .style("cursor", "pointer")
-          .on("click", (event) => {
-            event.stopPropagation();
-            handleDotClick(nodePath, dot.childPath);
-          });
-      });
+      const nodePath = getNodePath(
+        node.data,
+        node.parent
+          ? getNodePath(
+              node.parent.data,
+              node.parent.parent ? getNodePath(node.parent.parent.data) : "root"
+            )
+          : "root"
+      );
+      const { cellData, dotsData } = getCellAndDotData(
+        node,
+        nodePath,
+        PADDING,
+        LINE_HEIGHT,
+        TITLE_SPACING
+      );
+      renderCellBackgrounds(parent, cellData, node, dotsData, DOT_RADIUS);
+      renderCellText(parent, node, cellData, PADDING);
+      renderChildDots(parent, node, dotsData, expanded, DOT_RADIUS, nodePath, handleDotClick);
     });
 
     // Step 6: Render links after nodes are positioned
@@ -452,58 +579,7 @@ node.each(function (d) {
       .join("path")
       .attr("class", "link")
       .attr("marker-end", "url(#arrowhead)")
-      .attr("d", (d) => {
-        const sourceNode = d.source as d3.HierarchyNode<HierarchyNode> & {
-          x: number;
-          y: number;
-          width: number;
-          height: number;
-        };
-        const targetNode = d.target as d3.HierarchyNode<HierarchyNode> & {
-          x: number;
-          y: number;
-          width: number;
-          height: number;
-        };
-        const targetX = targetNode.y;
-        const targetY = targetNode.x;
-        let adjustedSourceY = sourceNode.x;
-        const parentData = sourceNode.data;
-        if (parentData.type === "object" && parentData.children) {
-          const childIndex = parentData.children.findIndex(
-            (child) => child.name === targetNode.data.name
-          );
-          if (childIndex !== -1) {
-            const fieldsCount = parentData.fields ? parentData.fields.length : 0;
-            const totalIndex = fieldsCount + childIndex;
-            adjustedSourceY =
-              sourceNode.x -
-              sourceNode.height / 2 +
-              PADDING +
-              LINE_HEIGHT +
-              TITLE_SPACING +
-              totalIndex * LINE_HEIGHT;
-          }
-        } else if (parentData.type === "array" && parentData.items) {
-          const childIndex = parentData.items.findIndex((item) => {
-          if (isHierarchyNode(item)) {
-            return item.name === targetNode.data.name;
-          }
-          return false;
-          });
-          if (childIndex !== -1) {
-            adjustedSourceY =
-              sourceNode.x -
-              sourceNode.height / 2 +
-              PADDING +
-              LINE_HEIGHT +
-              TITLE_SPACING +
-              childIndex * LINE_HEIGHT;
-          }
-        }
-        const sourceX = sourceNode.y + sourceNode.width;
-        return `M${sourceX},${adjustedSourceY}L${targetX},${targetY}`;
-      });
+      .attr("d", (d) => getLinkPath(d, PADDING, LINE_HEIGHT, TITLE_SPACING));
 
     // Zoom and Pan
     const zoom = d3
