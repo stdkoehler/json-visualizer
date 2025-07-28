@@ -1,7 +1,13 @@
 // src/components/D3Visualization.tsx
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import * as d3 from "d3";
 import type { HierarchyNode } from "../utils/types";
+
+// Extend D3's HierarchyNode to include width/height for layout
+interface CustomHierarchyNode extends d3.HierarchyNode<HierarchyNode> {
+  width: number;
+  height: number;
+}
 
 
 interface D3VisualizationProps {
@@ -74,7 +80,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
 
   // --- Click handler for dots ---
   const handleDotClick = useCallback(
-    (nodePath: string, childPath: string) => {
+    (_: string, childPath: string) => {
       setExpanded((prev) => {
         const next = new Set(prev);
         if (next.has(childPath)) {
@@ -95,7 +101,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
         return next;
       });
     },
-    []
+    [setExpanded]
   );
 
   // --- D3 rendering ---
@@ -128,10 +134,10 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
       return undefined;
     }
 
-    const root: d3.HierarchyNode<HierarchyNode> = d3.hierarchy(
+    const root: CustomHierarchyNode = d3.hierarchy(
       filteredData,
       getChildrenForD3
-    );
+    ) as CustomHierarchyNode;
 
     // Assign a width and height to each node for layout calculation
     root.each((node) => {
@@ -164,11 +170,11 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
           lineCount++;
         });
       }
-      (node as any).width = Math.min(
+      (node as CustomHierarchyNode).width = Math.min(
         Math.max(NODE_MIN_WIDTH, maxTextWidth + PADDING * 2),
         NODE_MAX_WIDTH
       );
-      (node as any).height =
+      (node as CustomHierarchyNode).height =
         lineCount * LINE_HEIGHT + PADDING * 2 + TITLE_SPACING;
     });
 
@@ -204,10 +210,10 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
     const nodeGroup = g.append("g").attr("class", "nodes");
 
     const node = nodeGroup
-      .selectAll<SVGGElement, d3.HierarchyNode<HierarchyNode>>("g")
-      .data(root.descendants())
+      .selectAll<SVGGElement, CustomHierarchyNode>("g")
+      .data(root.descendants() as CustomHierarchyNode[])
       .join("g")
-      .attr("transform", (d) => `translate(${(d as any).y},${(d as any).x})`)
+      .attr("transform", (d) => `translate(${d.y},${d.x})`)
       .attr("class", "node-group");
 
     // Node background
@@ -216,10 +222,10 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
       .attr("class", (d) =>
         d.data.type === "object" ? "object-box" : "array-box"
       )
-      .attr("width", (d) => (d as any).width)
-      .attr("height", (d) => (d as any).height)
+      .attr("width", (d) => d.width)
+      .attr("height", (d) => d.height)
       .attr("x", 0)
-      .attr("y", (d) => -(d as any).height / 2)
+      .attr("y", (d) => -d.height / 2)
       .attr("rx", 6);
 
     // Node Title (key name)
@@ -227,7 +233,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
       .append("text")
       .attr("class", "node-text node-title")
       .attr("x", PADDING)
-      .attr("y", (d) => -(d as any).height / 2 + PADDING + 5)
+      .attr("y", (d) => -d.height / 2 + PADDING + 5)
       .text((d) => d.data.name);
 
     // Node content with cell structure
@@ -235,7 +241,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
       const parent = d3.select(this);
       const nodePath = getNodePath(d.data, d.parent ? getNodePath(d.parent.data, d.parent.parent ? getNodePath(d.parent.parent.data) : "root") : "root");
 
-      let yOffset = -(d as any).height / 2 + PADDING + LINE_HEIGHT + TITLE_SPACING;
+      let yOffset = -d.height / 2 + PADDING + LINE_HEIGHT + TITLE_SPACING;
       const cellData: { y: number; height: number; hasConnection: boolean; textY: number; childNode?: HierarchyNode; childPath?: string }[] = [];
       const dotsData: { index: number; y: number; childNode: HierarchyNode; childPath: string }[] = [];
 
