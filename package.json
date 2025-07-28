@@ -12,6 +12,25 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "jsonVisualizerPanel",
+          "title": "JSON Visualizer",
+          "icon": "media/assets/vite.svg"
+        }
+      ]
+    },
+    "views": {
+      "jsonVisualizerPanel": [
+        {
+          "id": "jsonVisualizerView",
+          "name": "JSON Visualizer",
+          "type": "webview",
+          "icon": "media/assets/vite.svg"
+        }
+      ]
+    },
     "menus": {
       "editor/context": [
         {
