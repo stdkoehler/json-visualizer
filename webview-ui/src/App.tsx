@@ -5,6 +5,7 @@ import JsonEditor from "./components/JsonEditor";
 import D3Visualization from "./components/D3Visualization";
 import "./styles/App.css";
 import type { HierarchyNode } from "./utils/types";
+import { isHierarchyNode } from "./utils/types";
 
 const initialJson = {
   orderId: "A-789 ",
@@ -49,10 +50,10 @@ function getAllExpandablePaths(node: HierarchyNode, parentPath: string = "root")
     });
   } else if (node.type === "array" && node.items) {
     node.items.forEach((item) => {
-      if ((item as any).type === "object" || (item as any).type === "array") {
-        const childPath = path + "/" + (item as HierarchyNode).name;
+      if (isHierarchyNode(item)) {
+        const childPath = path + "/" + item.name;
         paths.push(childPath);
-        paths.push(...getAllExpandablePaths(item as HierarchyNode, path));
+        paths.push(...getAllExpandablePaths(item, path));
       }
     });
   }
