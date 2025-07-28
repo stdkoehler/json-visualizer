@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useCallback } from "react";
 import * as d3 from "d3";
 import type { HierarchyNode } from "../utils/types";
+import { isHierarchyNode, isPrimitiveArrayItem } from "../utils/types";
 
 // Extend D3's HierarchyNode to include width/height for layout
 interface CustomHierarchyNode extends d3.HierarchyNode<HierarchyNode> {
@@ -50,7 +51,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
       const filtered: HierarchyNode & { isInTree?: boolean } = { ...node };
       filtered.isInTree = isRoot || expanded.has(path);
       if (node.type === "object" && node.children) {
-        filtered.children = node.children.map((c) => {
+        filtered.children = node.children.map((c: HierarchyNode) => {
           const childPath = getNodePath(c, path);
           // Only recurse if this child is expanded
           if (expanded.has(childPath)) {
@@ -62,12 +63,12 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
         });
       } else if (node.type === "array" && node.items) {
         filtered.items = node.items.map((item) => {
-          if ((item as any).type === "object" || (item as any).type === "array") {
-            const childPath = getNodePath(item as HierarchyNode, path);
+          if (isHierarchyNode(item)) {
+            const childPath = getNodePath(item, path);
             if (expanded.has(childPath)) {
-              return buildD3Hierarchy(item as HierarchyNode, path);
+              return buildD3Hierarchy(item, path);
             } else {
-              return { ...(item as HierarchyNode), isInTree: false, children: undefined, items: undefined };
+              return { ...item, isInTree: false, children: undefined, items: undefined };
             }
           }
           return item;
@@ -124,12 +125,12 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
     const filteredData = buildD3Hierarchy(data);
 
     // Use isInTree flag to determine which nodes to include in the D3 hierarchy
-    function getChildrenForD3(node: HierarchyNode & { isInTree?: boolean }): (HierarchyNode & { isInTree?: boolean })[] | undefined {
+    function getChildrenForD3(node: HierarchyNode): (HierarchyNode)[] | undefined {
       if (node.type === "object" && node.children) {
-        return node.children.filter((c) => (c as any).isInTree);
+        return node.children.filter((c): c is HierarchyNode => isHierarchyNode(c) && Boolean(c.isInTree));
       }
       if (node.type === "array" && node.items) {
-        return node.items.filter((item) => (item as any).isInTree) as (HierarchyNode & { isInTree?: boolean })[];
+        return node.items.filter((item): item is HierarchyNode => isHierarchyNode(item) && Boolean((item as HierarchyNode).isInTree));
       }
       return undefined;
     }
@@ -160,11 +161,11 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
         }
       } else if (node.data.type === "array" && node.data.items) {
         node.data.items.forEach((item) => {
-          if ((item as any).type === "object" || (item as any).type === "array") {
-            const text = `${(item as HierarchyNode).name}: ${(item as any).type}`;
+          if (isHierarchyNode(item)) {
+            const text = `${item.name}: ${item.type}`;
             maxTextWidth = Math.max(maxTextWidth, text.length * CHAR_WIDTH);
-          } else {
-            const text = `${item.name}: ${JSON.stringify((item as any).value)}`;
+          } else if (isPrimitiveArrayItem(item)) {
+            const text = `${item.name}: ${JSON.stringify(item.value)}`;
             maxTextWidth = Math.max(maxTextWidth, text.length * CHAR_WIDTH);
           }
           lineCount++;
@@ -269,11 +270,11 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
         d.data.items.forEach((item) => {
           const cellY = yOffset - LINE_HEIGHT / 2;
           const textY = yOffset;
-          let hasConnection = (item as any).type !== "primitive";
+          const hasConnection = isHierarchyNode(item);
           let childNode: HierarchyNode | undefined = undefined;
           let childPath: string | undefined = undefined;
           if (hasConnection) {
-            childNode = item as HierarchyNode;
+            childNode = item;
             childPath = getNodePath(childNode, nodePath);
           }
           cellData.push({ y: cellY, height: LINE_HEIGHT, hasConnection, textY, childNode, childPath });
@@ -293,7 +294,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
           .append("line")
           .attr("class", "cell-divider-top")
           .attr("x1", leftPadding)
-          .attr("x2", (d as any).width - dotAreaWidth)
+          .attr("x2", (d as CustomHierarchyNode).width - dotAreaWidth)
           .attr("y1", cell.y)
           .attr("y2", cell.y);
         if (index === cellData.length - 1) {
@@ -301,7 +302,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
             .append("line")
             .attr("class", "cell-divider-bottom")
             .attr("x1", leftPadding)
-            .attr("x2", (d as any).width - dotAreaWidth)
+            .attr("x2", (d as CustomHierarchyNode).width - dotAreaWidth)
             .attr("y1", cell.y + cell.height)
             .attr("y2", cell.y + cell.height);
         }
@@ -310,7 +311,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
           .attr("class", "cell-hover-area")
           .attr("x", 1)
           .attr("y", cell.y)
-          .attr("width", (d as any).width - 2)
+          .attr("width", (d as CustomHierarchyNode).width - 2)
           .attr("height", cell.height)
           .attr("fill", "transparent")
           .attr("stroke", "none")
@@ -320,7 +321,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
           .attr("class", "cell-background")
           .attr("x", 1)
           .attr("y", cell.y)
-          .attr("width", (d as any).width - 2)
+          .attr("width", (d as CustomHierarchyNode).width - 2)
           .attr("height", cell.height)
           .attr("opacity", 0)
           .attr("rx", 3);
@@ -392,8 +393,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
       } else if (d.data.type === "array" && d.data.items) {
         d.data.items.forEach((item, index) => {
           const cell = cellData[index];
-          if ((item as any).type === "primitive") {
-            const primitiveItem = item as { name: string; value: any; type: "primitive" };
+          if (isPrimitiveArrayItem(item)) {
             const text = parent
               .append("text")
               .attr("class", "node-text node-field")
@@ -402,24 +402,23 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
               .attr("dominant-baseline", "middle");
             text
               .append("tspan")
-              .text(`${primitiveItem.name}: `)
+              .text(`${item.name}: `)
               .attr("class", "field-key");
             text
               .append("tspan")
-              .text(`${JSON.stringify(primitiveItem.value)}`)
+              .text(`${JSON.stringify(item.value)}`)
               .attr("class", "field-value");
-          } else {
-            const nodeItem = item as HierarchyNode;
+          } else if (isHierarchyNode(item)) {
             const text = parent
               .append("text")
               .attr("class", "node-text node-child-link")
               .attr("x", PADDING + 10)
               .attr("y", cell.textY)
               .attr("dominant-baseline", "middle");
-            text.append("tspan").text(`${nodeItem.name}: `);
+            text.append("tspan").text(`${item.name}: `);
             text
               .append("tspan")
-              .text(`${nodeItem.type}`)
+              .text(`${item.type}`)
               .attr("font-style", "italic");
           }
         });
@@ -433,7 +432,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
           .append("circle")
           .attr("class", "child-link-dot" + (isExpanded ? " expanded" : " collapsed"))
           .attr("data-cell-index", dot.index)
-          .attr("cx", (d as any).width)
+          .attr("cx", (d as CustomHierarchyNode).width)
           .attr("cy", dot.y)
           .attr("r", DOT_RADIUS)
           .attr("fill", isExpanded ? "#4285F4" : "#9AA0A6")
@@ -486,10 +485,10 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
           }
         } else if (parentData.type === "array" && parentData.items) {
           const childIndex = parentData.items.findIndex((item) => {
-            if ((item as any).type === "object" || (item as any).type === "array") {
-              return (item as HierarchyNode).name === targetNode.data.name;
-            }
-            return false;
+          if (isHierarchyNode(item)) {
+            return item.name === targetNode.data.name;
+          }
+          return false;
           });
           if (childIndex !== -1) {
             adjustedSourceY =
