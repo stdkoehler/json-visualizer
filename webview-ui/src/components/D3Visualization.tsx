@@ -23,31 +23,36 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
   // Set of expanded node paths (root always expanded)
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(["root"]));
 
-  // Helper: Recursively build a D3 hierarchy only for expanded nodes
+  // Helper: Recursively build a D3 hierarchy only for expanded nodes, and mark nodes that should be in the tree
   const buildD3Hierarchy = useCallback(
     (node: HierarchyNode, parentPath: string = "root"): HierarchyNode => {
       const path = getNodePath(node, parentPath);
-      let filtered: HierarchyNode = { ...node };
-      // Always list all children/items in the parent box, but only include children/items in the hierarchy if expanded
+      let filtered: HierarchyNode & { isInTree?: boolean } = { ...node };
+      filtered.isInTree = true; // Mark this node as visible in the tree
       if (node.type === "object" && node.children) {
         filtered.children = node.children.map((c) => {
           const childPath = getNodePath(c, path);
+          let childNode: HierarchyNode & { isInTree?: boolean };
           if (expanded.has(childPath)) {
-            return buildD3Hierarchy(c, path);
+            childNode = buildD3Hierarchy(c, path);
           } else {
-            // Not expanded: do not include children/items for this child
-            return { ...c, children: undefined, items: undefined };
+            childNode = { ...c, children: undefined, items: undefined };
           }
+          childNode.isInTree = true; // Always mark as in tree so it can be rendered and expanded
+          return childNode;
         });
       } else if (node.type === "array" && node.items) {
         filtered.items = node.items.map((item) => {
           if ((item as any).type === "object" || (item as any).type === "array") {
             const childPath = getNodePath(item as HierarchyNode, path);
+            let childNode: HierarchyNode & { isInTree?: boolean };
             if (expanded.has(childPath)) {
-              return buildD3Hierarchy(item as HierarchyNode, path);
+              childNode = buildD3Hierarchy(item as HierarchyNode, path);
             } else {
-              return { ...(item as HierarchyNode), children: undefined, items: undefined };
+              childNode = { ...(item as HierarchyNode), children: undefined, items: undefined };
             }
+            childNode.isInTree = true;
+            return childNode;
           }
           return item;
         });
@@ -102,17 +107,13 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
     // Use hierarchy with only expanded children
     const filteredData = buildD3Hierarchy(data);
 
-    // Only return children/items for nodes that are expanded (children/items are present only if expanded)
-    function getChildrenForD3(node: HierarchyNode): HierarchyNode[] | undefined {
+    // Use isInTree flag to determine which nodes to include in the D3 hierarchy
+    function getChildrenForD3(node: HierarchyNode & { isInTree?: boolean }): (HierarchyNode & { isInTree?: boolean })[] | undefined {
       if (node.type === "object" && node.children) {
-        return node.children.filter(
-          (c) => c.children !== undefined || c.items !== undefined
-        );
+        return node.children.filter((c) => (c as any).isInTree);
       }
       if (node.type === "array" && node.items) {
-        return node.items.filter(
-          (item) => (item as any).children !== undefined || (item as any).items !== undefined
-        ) as HierarchyNode[];
+        return node.items.filter((item) => (item as any).isInTree) as (HierarchyNode & { isInTree?: boolean })[];
       }
       return undefined;
     }

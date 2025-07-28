@@ -27,7 +27,7 @@ const initialJson = {
     "Note: Expedite ",
   ],
   numbers: [0, 1, 2, 3],
-  stuff: [{ a: "b " }, { c: "d " }, { e: "f " }],
+  stuff: [{ a: "b " }, { c: "d " }, { e: "f " }, { f: {"h": "i"} }],
 };
 
 function getEmptyHierarchy(): HierarchyNode {
