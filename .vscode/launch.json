@@ -16,6 +16,14 @@
 				"${workspaceFolder}/out/**/*.js"
 			],
 			"preLaunchTask": "${defaultBuildTask}"
+		},
+		{
+			"type": "chrome",
+			"request": "launch",
+			"name": "Debug Vite React (webview-ui)",
+			"url": "http://localhost:5173",
+			"webRoot": "${workspaceFolder}/webview-ui/src",
+			"cwd": "${workspaceFolder}/webview-ui"
 		}
 	]
 }
