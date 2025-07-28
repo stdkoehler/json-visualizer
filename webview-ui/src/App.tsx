@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { buildHierarchy } from "./utils/parser";
 import JsonEditor from "./components/JsonEditor";
 import D3Visualization from "./components/D3Visualization";
@@ -43,6 +43,20 @@ function App() {
     JSON.stringify(initialJson, null, 2)
   );
 
+  // Notify extension that the webview is ready, and listen for set-json messages
+  useEffect(() => {
+    // Use VS Code webview API for communication
+    const vscode = (window as any).acquireVsCodeApi ? (window as any).acquireVsCodeApi() : undefined;
+    vscode?.postMessage({ type: 'ready' });
+
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'set-json') {
+        setJsonString(JSON.stringify(event.data.payload, null, 2));
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
   const { graphData, error } = useMemo(() => {
     try {
       const parsedJson = JSON.parse(jsonString);
