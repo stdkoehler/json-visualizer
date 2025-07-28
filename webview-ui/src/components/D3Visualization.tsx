@@ -1,23 +1,95 @@
 // src/components/D3Visualization.tsx
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as d3 from "d3";
 import type { HierarchyNode } from "../utils/types";
+
 
 interface D3VisualizationProps {
   data: HierarchyNode;
 }
 
+// Helper: get unique path for a node
+function getNodePath(node: HierarchyNode, parentPath: string = "root"): string {
+  if (!node || !node.name) return parentPath;
+  return parentPath + "/" + node.name;
+}
+
+
 const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // --- Expansion state ---
+  // Set of expanded node paths (root always expanded)
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(["root"]));
+
+  // Helper: Recursively build a D3 hierarchy only for expanded nodes
+  const buildD3Hierarchy = useCallback(
+    (node: HierarchyNode, parentPath: string = "root"): HierarchyNode => {
+      const path = getNodePath(node, parentPath);
+      let filtered: HierarchyNode = { ...node };
+      // Always list all children/items in the parent box, but only include children/items in the hierarchy if expanded
+      if (node.type === "object" && node.children) {
+        filtered.children = node.children.map((c) => {
+          const childPath = getNodePath(c, path);
+          if (expanded.has(childPath)) {
+            return buildD3Hierarchy(c, path);
+          } else {
+            // Not expanded: do not include children/items for this child
+            return { ...c, children: undefined, items: undefined };
+          }
+        });
+      } else if (node.type === "array" && node.items) {
+        filtered.items = node.items.map((item) => {
+          if ((item as any).type === "object" || (item as any).type === "array") {
+            const childPath = getNodePath(item as HierarchyNode, path);
+            if (expanded.has(childPath)) {
+              return buildD3Hierarchy(item as HierarchyNode, path);
+            } else {
+              return { ...(item as HierarchyNode), children: undefined, items: undefined };
+            }
+          }
+          return item;
+        });
+      }
+      return filtered;
+    },
+    [expanded]
+  );
+
+  // --- Click handler for dots ---
+  const handleDotClick = useCallback(
+    (nodePath: string, childPath: string) => {
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        if (next.has(childPath)) {
+          // Collapse: remove childPath and all descendants
+          const toRemove = [childPath];
+          // Remove all descendants recursively
+          for (let i = 0; i < toRemove.length; i++) {
+            const p = toRemove[i];
+            for (const ep of next) {
+              if (ep.startsWith(p + "/")) toRemove.push(ep);
+            }
+          }
+          toRemove.forEach((p) => next.delete(p));
+        } else {
+          // Expand
+          next.add(childPath);
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  // --- D3 rendering ---
   useEffect(() => {
     if (!data || !svgRef.current || !containerRef.current) return;
 
     const svg = d3.select(svgRef.current);
     const container = containerRef.current;
-
-    svg.selectAll("*").remove(); // Clear previous render
+    svg.selectAll("*").remove();
 
     const PADDING = 12;
     const LINE_HEIGHT = 18;
@@ -25,32 +97,35 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
     const NODE_MIN_WIDTH = 180;
     const NODE_MAX_WIDTH = 400;
     const DOT_RADIUS = 4;
-    const TITLE_SPACING = LINE_HEIGHT * 0.3; // Extra spacing after title
+    const TITLE_SPACING = LINE_HEIGHT * 0.3;
 
-    // For d3.hierarchy, treat array items that are objects/arrays as children, primitives as leaves
-    function getChildrenForD3(
-      node: HierarchyNode
-    ): HierarchyNode[] | undefined {
-      if (node.type === "object") return node.children;
-      if (node.type === "array" && node.items) {
-        // Only return items that are objects/arrays (not primitives)
-        return node.items.filter(
-          (item): item is HierarchyNode =>
-            (item as any).type === "object" || (item as any).type === "array"
+    // Use hierarchy with only expanded children
+    const filteredData = buildD3Hierarchy(data);
+
+    // Only return children/items for nodes that are expanded (children/items are present only if expanded)
+    function getChildrenForD3(node: HierarchyNode): HierarchyNode[] | undefined {
+      if (node.type === "object" && node.children) {
+        return node.children.filter(
+          (c) => c.children !== undefined || c.items !== undefined
         );
+      }
+      if (node.type === "array" && node.items) {
+        return node.items.filter(
+          (item) => (item as any).children !== undefined || (item as any).items !== undefined
+        ) as HierarchyNode[];
       }
       return undefined;
     }
 
     const root: d3.HierarchyNode<HierarchyNode> = d3.hierarchy(
-      data,
+      filteredData,
       getChildrenForD3
     );
 
     // Assign a width and height to each node for layout calculation
     root.each((node) => {
       let maxTextWidth = node.data.name.length * CHAR_WIDTH;
-      let lineCount = 1; // title
+      let lineCount = 1;
       if (node.data.type === "object") {
         if (node.data.fields) {
           node.data.fields.forEach((f) => {
@@ -68,17 +143,10 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
         }
       } else if (node.data.type === "array" && node.data.items) {
         node.data.items.forEach((item) => {
-          if (
-            (item as any).type === "object" ||
-            (item as any).type === "array"
-          ) {
-            // Enhanced format: "0: object" or "1: array"
-            const text = `${(item as HierarchyNode).name}: ${
-              (item as any).type
-            }`;
+          if ((item as any).type === "object" || (item as any).type === "array") {
+            const text = `${(item as HierarchyNode).name}: ${(item as any).type}`;
             maxTextWidth = Math.max(maxTextWidth, text.length * CHAR_WIDTH);
           } else {
-            // primitive
             const text = `${item.name}: ${JSON.stringify((item as any).value)}`;
             maxTextWidth = Math.max(maxTextWidth, text.length * CHAR_WIDTH);
           }
@@ -119,10 +187,8 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
       .attr("d", "M0,-5L10,0L0,5")
       .attr("class", "arrowhead-path");
 
-
     // --- Links group first ---
     const linkGroup = g.append("g").attr("class", "d3-link-group");
-
     // --- Nodes group after ---
     const nodeGroup = g.append("g").attr("class", "nodes");
 
@@ -156,83 +222,56 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
     // Node content with cell structure
     node.each(function (d) {
       const parent = d3.select(this);
+      const nodePath = getNodePath(d.data, d.parent ? getNodePath(d.parent.data, d.parent.parent ? getNodePath(d.parent.parent.data) : "root") : "root");
 
-      // Step 2: Add proper spacing after title
-      let yOffset =
-        -(d as any).height / 2 + PADDING + LINE_HEIGHT + TITLE_SPACING;
+      let yOffset = -(d as any).height / 2 + PADDING + LINE_HEIGHT + TITLE_SPACING;
+      const cellData: { y: number; height: number; hasConnection: boolean; textY: number; childNode?: HierarchyNode; childPath?: string }[] = [];
+      const dotsData: { index: number; y: number; childNode: HierarchyNode; childPath: string }[] = [];
 
-      const cellData: {
-        y: number;
-        height: number;
-        hasConnection: boolean;
-        textY: number;
-      }[] = [];
-      const dotsData: { index: number; y: number }[] = [];
-
-      // Step 3: Build cell structure with consistent coordinates
       if (d.data.type === "object") {
         if (d.data.fields) {
           d.data.fields.forEach(() => {
             const cellY = yOffset - LINE_HEIGHT / 2;
-            const textY = yOffset; // Text at center of cell
-            cellData.push({
-              y: cellY,
-              height: LINE_HEIGHT,
-              hasConnection: false,
-              textY,
-            });
+            const textY = yOffset;
+            cellData.push({ y: cellY, height: LINE_HEIGHT, hasConnection: false, textY });
             yOffset += LINE_HEIGHT;
           });
         }
+        // Always list all children as rows with link-dots, regardless of expansion
         if (d.data.children) {
-          d.data.children.forEach(() => {
+          d.data.children.forEach((child) => {
             const cellY = yOffset - LINE_HEIGHT / 2;
-            const textY = yOffset; // Text at center of cell
-            cellData.push({
-              y: cellY,
-              height: LINE_HEIGHT,
-              hasConnection: true,
-              textY,
-            });
-
-            // Dots at same Y as text (center of cell)
-            dotsData.push({
-              index: cellData.length - 1,
-              y: textY,
-            });
+            const textY = yOffset;
+            const childPath = getNodePath(child, nodePath);
+            cellData.push({ y: cellY, height: LINE_HEIGHT, hasConnection: true, textY, childNode: child, childPath });
+            dotsData.push({ index: cellData.length - 1, y: textY, childNode: child, childPath });
             yOffset += LINE_HEIGHT;
           });
         }
       } else if (d.data.type === "array" && d.data.items) {
         d.data.items.forEach((item) => {
           const cellY = yOffset - LINE_HEIGHT / 2;
-          const textY = yOffset; // Text at center of cell
-          const hasConnection = (item as any).type !== "primitive";
-          cellData.push({
-            y: cellY,
-            height: LINE_HEIGHT,
-            hasConnection,
-            textY,
-          });
-
+          const textY = yOffset;
+          let hasConnection = (item as any).type !== "primitive";
+          let childNode: HierarchyNode | undefined = undefined;
+          let childPath: string | undefined = undefined;
           if (hasConnection) {
-            // Dots at same Y as text (center of cell)
-            dotsData.push({
-              index: cellData.length - 1,
-              y: textY,
-            });
+            childNode = item as HierarchyNode;
+            childPath = getNodePath(childNode, nodePath);
+          }
+          cellData.push({ y: cellY, height: LINE_HEIGHT, hasConnection, textY, childNode, childPath });
+          if (hasConnection && childNode && childPath) {
+            dotsData.push({ index: cellData.length - 1, y: textY, childNode, childPath });
           }
           yOffset += LINE_HEIGHT;
         });
       }
 
-      // Step 3: Add cell dividers with symmetric padding
+      // Cell backgrounds, hover, etc (unchanged)
       const cellsGroup = parent.append("g").attr("class", "cell-backgrounds");
       const dotAreaWidth = DOT_RADIUS * 3;
       const leftPadding = 4;
-
       cellData.forEach((cell, index) => {
-        // Top divider for each cell
         cellsGroup
           .append("line")
           .attr("class", "cell-divider-top")
@@ -240,8 +279,6 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
           .attr("x2", (d as any).width - dotAreaWidth)
           .attr("y1", cell.y)
           .attr("y2", cell.y);
-
-        // Bottom divider for last cell
         if (index === cellData.length - 1) {
           cellsGroup
             .append("line")
@@ -251,8 +288,6 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
             .attr("y1", cell.y + cell.height)
             .attr("y2", cell.y + cell.height);
         }
-
-        // Step 6: Hover areas
         const cellHoverArea = cellsGroup
           .append("rect")
           .attr("class", "cell-hover-area")
@@ -263,7 +298,6 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
           .attr("fill", "transparent")
           .attr("stroke", "none")
           .style("cursor", cell.hasConnection ? "pointer" : "default");
-
         const cellBackground = cellsGroup
           .append("rect")
           .attr("class", "cell-background")
@@ -273,9 +307,7 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
           .attr("height", cell.height)
           .attr("opacity", 0)
           .attr("rx", 3);
-
         const correspondingDot = dotsData.find((dot) => dot.index === index);
-
         cellHoverArea
           .on("mouseenter", function () {
             cellBackground.transition().duration(150).attr("opacity", 0.8);
@@ -305,7 +337,7 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
           });
       });
 
-      // Step 4: Render text at cell centers
+      // Step 4: Render text at cell centers (unchanged)
       if (d.data.type === "object") {
         if (d.data.fields) {
           d.data.fields.forEach((field, index) => {
@@ -316,7 +348,6 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
               .attr("x", PADDING + 10)
               .attr("y", cell.textY)
               .attr("dominant-baseline", "middle");
-
             text
               .append("tspan")
               .text(`${field.name}: `)
@@ -345,18 +376,13 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
         d.data.items.forEach((item, index) => {
           const cell = cellData[index];
           if ((item as any).type === "primitive") {
-            const primitiveItem = item as {
-              name: string;
-              value: any;
-              type: "primitive";
-            };
+            const primitiveItem = item as { name: string; value: any; type: "primitive" };
             const text = parent
               .append("text")
               .attr("class", "node-text node-field")
               .attr("x", PADDING + 10)
               .attr("y", cell.textY)
               .attr("dominant-baseline", "middle");
-
             text
               .append("tspan")
               .text(`${primitiveItem.name}: `)
@@ -373,9 +399,7 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
               .attr("x", PADDING + 10)
               .attr("y", cell.textY)
               .attr("dominant-baseline", "middle");
-
             text.append("tspan").text(`${nodeItem.name}: `);
-
             text
               .append("tspan")
               .text(`${nodeItem.type}`)
@@ -384,8 +408,27 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
         });
       }
 
+      // Step 5: Render dots at same Y as text, with click handler
+      const dotsGroup = parent.append("g").attr("class", "child-link-dots");
+      dotsData.forEach((dot) => {
+        const isExpanded = expanded.has(dot.childPath);
+        dotsGroup
+          .append("circle")
+          .attr("class", "child-link-dot" + (isExpanded ? " expanded" : " collapsed"))
+          .attr("data-cell-index", dot.index)
+          .attr("cx", (d as any).width)
+          .attr("cy", dot.y)
+          .attr("r", DOT_RADIUS)
+          .attr("fill", isExpanded ? "#4285F4" : "#9AA0A6")
+          .style("cursor", "pointer")
+          .on("click", (event) => {
+            event.stopPropagation();
+            handleDotClick(nodePath, dot.childPath);
+          });
+      });
+    });
 
-    // Step 4: Render links after nodes are positioned (but group is before nodes, so links are under nodes/dots)
+    // Step 6: Render links after nodes are positioned
     linkGroup
       .selectAll<SVGPathElement, d3.HierarchyLink<HierarchyNode>>("path")
       .data(root.links())
@@ -405,24 +448,17 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
           width: number;
           height: number;
         };
-
         const targetX = targetNode.y;
         const targetY = targetNode.x;
-
-        // Find the correct dot position
-        let adjustedSourceY = sourceNode.x; // Default fallback
+        let adjustedSourceY = sourceNode.x;
         const parentData = sourceNode.data;
-
         if (parentData.type === "object" && parentData.children) {
           const childIndex = parentData.children.findIndex(
             (child) => child.name === targetNode.data.name
           );
           if (childIndex !== -1) {
-            const fieldsCount = parentData.fields
-              ? parentData.fields.length
-              : 0;
+            const fieldsCount = parentData.fields ? parentData.fields.length : 0;
             const totalIndex = fieldsCount + childIndex;
-            // Calculate dot Y position using same logic as node rendering
             adjustedSourceY =
               sourceNode.x -
               sourceNode.height / 2 +
@@ -433,17 +469,12 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
           }
         } else if (parentData.type === "array" && parentData.items) {
           const childIndex = parentData.items.findIndex((item) => {
-            if (
-              (item as any).type === "object" ||
-              (item as any).type === "array"
-            ) {
+            if ((item as any).type === "object" || (item as any).type === "array") {
               return (item as HierarchyNode).name === targetNode.data.name;
             }
             return false;
           });
-
           if (childIndex !== -1) {
-            // Calculate dot Y position using same logic as node rendering
             adjustedSourceY =
               sourceNode.x -
               sourceNode.height / 2 +
@@ -453,27 +484,9 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
               childIndex * LINE_HEIGHT;
           }
         }
-
-        const sourceX = sourceNode.y + sourceNode.width; // Start from right edge
-
-        // Simple straight line from dot to target
+        const sourceX = sourceNode.y + sourceNode.width;
         return `M${sourceX},${adjustedSourceY}L${targetX},${targetY}`;
       });
-
-
-      // Step 5: Render dots at same Y as text
-      const dotsGroup = parent.append("g").attr("class", "child-link-dots");
-      dotsData.forEach((dot) => {
-        dotsGroup
-          .append("circle")
-          .attr("class", "child-link-dot")
-          .attr("data-cell-index", dot.index)
-          .attr("cx", (d as any).width) // Right edge of the node
-          .attr("cy", dot.y) // Same Y as text
-          .attr("r", DOT_RADIUS);
-      });
-    });
-
 
     // Zoom and Pan
     const zoom = d3
@@ -482,8 +495,6 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
       .on("zoom", (event) => {
         g.attr("transform", event.transform);
       });
-
-    // Fit to screen initially
     setTimeout(() => {
       const bounds = g.node()!.getBBox();
       const fullWidth = container.clientWidth;
@@ -492,17 +503,14 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
       const height = bounds.height;
       const midX = bounds.x + width / 2;
       const midY = bounds.y + height / 2;
-
       if (width === 0 || height === 0) return;
-
       const scale = Math.min(fullWidth / width, fullHeight / height) * 0.9;
       const initialTransform = d3.zoomIdentity
         .translate(fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY)
         .scale(scale);
-
       svg.call(zoom).call(zoom.transform, initialTransform);
     }, 10);
-  }, [data]);
+  }, [data, expanded, buildD3Hierarchy, handleDotClick]);
 
   return (
     <div ref={containerRef} className="visualization-container">

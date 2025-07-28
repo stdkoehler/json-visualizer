@@ -1,3 +1,49 @@
+# PRP
+
+I want the json tree to be expandable. When starting is should start collapsed with only showing the root node. When clicking on the link-dot the respective child should be drawn (with the according link)
+Each child object should allow to expand it's own children in the same way.
+
+Acceptance criteria:
+
+1. Upon start, only root object is shown
+2. when clicking on a link-dot the respective child is drawn with the link connecting it to its parent
+3. when clicking an already expanded link-dot, the child should collapse (remove link and child object)
+   3.1) if a child is collapsed all its nested children are to be collapsed as well
+
+## 0. Implementation plan
+
+### 1. State Management for Expansion
+
+- Maintain a state (e.g., a Set of expanded node paths or IDs) in the D3Visualization component to track which nodes are expanded.
+- The root node is always expanded at first, all others are collapsed.
+
+### 2. Data Preparation
+
+- When building the D3 hierarchy, only include children for nodes whose path/ID is in the expanded set.
+- For collapsed nodes, do not include their children in the hierarchy.
+
+### 3. Rendering
+
+- Render only the visible nodes and links based on the current expanded state.
+- Each link-dot (the circle at the right edge of a node) should be clickable.
+
+### 4. Interaction
+
+- On clicking a link-dot:
+  - If the child is collapsed, add its path/ID to the expanded set (expand it).
+  - If the child is expanded, remove its path/ID and all its descendants from the expanded set (collapse it and all nested children).
+
+### 5. Visual Feedback
+
+- Optionally, style the link-dot differently if the child is expanded vs. collapsed (e.g., filled vs. hollow).
+
+### 6. Key Details
+
+- Each node must have a unique path or ID (e.g., a string path like root/child1/child2).
+- The D3 rendering logic must be updated to use only the visible part of the tree.
+
+If you confirm this plan, I will proceed to implement it in `D3Visualization.tsx`. Let me know if you want any adjustments or have questions!
+
 ## 1. Project Overview
 
 - This is a Visual Studio Code extension named "json-visualizer."
@@ -5,7 +51,8 @@
 
 ## 2. Extension Backend (VS Code Side)
 
-**Key file:**  
+**Key file:**
+
 - `src/extension.ts`
   - Registers the command `d3Visualizer.visualizeVariable`.
   - When triggered, it opens a webview panel (if not already open).
@@ -14,7 +61,8 @@
   - Handles webview lifecycle (disposal, etc.).
   - Uses a nonce for CSP security.
 
-**Manifest:**  
+**Manifest:**
+
 - `package.json`
   - Declares the extension, its activation events, and the command.
   - Contributes the command to the editor context menu (for Python files).
@@ -22,49 +70,58 @@
 
 ## 3. Webview Frontend (React + D3)
 
-**Frontend project location:**  
+**Frontend project location:**
+
 - `webview-ui/`
 
-**Build system:**  
+**Build system:**
+
 - Uses Vite (`vite.config.ts`) for fast development and building.
 - Output is placed in `../media` for the extension to serve.
 
-**Entry point:**  
+**Entry point:**
+
 - `webview-ui/src/main.tsx`
   - Renders the `App` component into the `#root` div.
 
-**Main App:**  
+**Main App:**
+
 - `webview-ui/src/App.tsx`
   - Manages the JSON string state.
   - Parses JSON and builds a hierarchical structure for visualization.
   - Renders two panes: a JSON editor and a D3 visualization.
   - Handles error display for invalid JSON.
 
-**Components:**  
+**Components:**
+
 - `webview-ui/src/components/JsonEditor.tsx`
   - Simple textarea for editing JSON, with error display.
 - `webview-ui/src/components/D3Visualization.tsx`
   - Uses D3.js to render a tree visualization of the JSON hierarchy.
   - Handles layout, node rendering, links, zoom/pan, and interactive highlighting.
 
-**Utilities:**  
+**Utilities:**
+
 - `webview-ui/src/utils/parser.ts`
   - Converts arbitrary JSON into a hierarchical structure suitable for D3.
   - Handles objects, arrays, primitives, and circular references.
 - `webview-ui/src/utils/types.ts`
   - Type definitions for the hierarchical data structure.
 
-**Styling:**  
+**Styling:**
+
 - `webview-ui/src/styles/App.css`
   - Custom styles for layout, editor, visualization, and D3 nodes/links.
 - `webview-ui/src/index.css`
   - Base styles, color schemes, and resets.
 
-**HTML Entrypoint:**  
+**HTML Entrypoint:**
+
 - `webview-ui/index.html`
   - Loads the React app into `#root`.
 
-**Configuration:**  
+**Configuration:**
+
 - TypeScript configs: `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`
 - ESLint config: `eslint.config.js`
 - Package manifest: `package.json` (declares dependencies: React, D3, etc.)
@@ -93,6 +150,7 @@
 ---
 
 **Summary of Data Flow:**
+
 - The extension is activated by a command.
 - It opens a webview and loads the React app.
 - The extension can post messages (JSON data) to the webview.
@@ -100,6 +158,7 @@
 - The user can edit the JSON in the webview, and the visualization updates in real time.
 
 **Key Technologies:**
+
 - VS Code Extension API (TypeScript)
 - React (frontend)
 - D3.js (visualization)
@@ -117,6 +176,7 @@ This is a Visual Studio Code extension named `json-visualizer`. Its purpose is t
 ## 1. Extension Backend (VS Code Side)
 
 - **Entry Point:** extension.ts
+
   - Registers the command `d3Visualizer.visualizeVariable`, which appears in the context menu for Python files.
   - When triggered, it:
     - Gets the current selection in the editor.
@@ -127,6 +187,7 @@ This is a Visual Studio Code extension named `json-visualizer`. Its purpose is t
   - The extension is set up to only contribute a single command, and only for Python files.
 
 - **Build & Test:**
+
   - TypeScript is used for the extension code.
   - Build output goes to out.
   - Linting is set up with ESLint and TypeScript ESLint plugin.
