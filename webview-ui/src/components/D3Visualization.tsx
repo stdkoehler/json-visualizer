@@ -119,7 +119,11 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
       .attr("d", "M0,-5L10,0L0,5")
       .attr("class", "arrowhead-path");
 
-    // --- Nodes ---
+
+    // --- Links group first ---
+    const linkGroup = g.append("g").attr("class", "d3-link-group");
+
+    // --- Nodes group after ---
     const nodeGroup = g.append("g").attr("class", "nodes");
 
     const node = nodeGroup
@@ -380,24 +384,8 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
         });
       }
 
-      // Step 4 & 5: Render dots at same Y as text
-      const dotsGroup = parent.append("g").attr("class", "child-link-dots");
-      dotsData.forEach((dot) => {
-        dotsGroup
-          .append("circle")
-          .attr("class", "child-link-dot")
-          .attr("data-cell-index", dot.index)
-          .attr("cx", (d as any).width) // Right edge of the node
-          .attr("cy", dot.y) // Same Y as text
-          .attr("r", DOT_RADIUS);
-      });
-    });
 
-    // Step 5: Fix connector positioning - render links after nodes are positioned
-    const linkGroup = g
-      .append("g")
-      .attr("class", "d3-link-group");
-
+    // Step 4: Render links after nodes are positioned (but group is before nodes, so links are under nodes/dots)
     linkGroup
       .selectAll<SVGPathElement, d3.HierarchyLink<HierarchyNode>>("path")
       .data(root.links())
@@ -471,6 +459,21 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
         // Simple straight line from dot to target
         return `M${sourceX},${adjustedSourceY}L${targetX},${targetY}`;
       });
+
+
+      // Step 5: Render dots at same Y as text
+      const dotsGroup = parent.append("g").attr("class", "child-link-dots");
+      dotsData.forEach((dot) => {
+        dotsGroup
+          .append("circle")
+          .attr("class", "child-link-dot")
+          .attr("data-cell-index", dot.index)
+          .attr("cx", (d as any).width) // Right edge of the node
+          .attr("cy", dot.y) // Same Y as text
+          .attr("r", DOT_RADIUS);
+      });
+    });
+
 
     // Zoom and Pan
     const zoom = d3

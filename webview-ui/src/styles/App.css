@@ -26,7 +26,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 90vh;
-  background-color: var(--vscode-editorWidget-background, #ffffff);
+  background-color: var(--vscode-editor-background, #ffffff);
   border-radius: 12px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
   overflow: hidden;
@@ -75,7 +75,7 @@ main {
   width: 35%;
   min-width: 350px;
   border-right: 1px solid var(--vscode-editorWidget-border, #dadce0);
-  background-color: var(--vscode-editorWidget-background, #ffffff);
+  background-color: var(--vscode-editor-background, #ffffff);
 }
 
 .visualization-pane {
@@ -133,7 +133,7 @@ main {
   overflow: hidden;
   position: relative;
   border-radius: 8px;
-  background-color: var(--vscode-editorWidget-background, #ffffff);
+  background-color: var(--vscode-editor-background, #ffffff);
   box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.05);
 }
 
@@ -157,9 +157,9 @@ main {
 /* Cell Dividers */
 .cell-divider-top,
 .cell-divider-bottom {
-  stroke: var(--vscode-editorWidget-border, #e1e4e8);
+  stroke: var(--vscode-focusBorder, #e1e4e8);
   stroke-width: 0.5px;
-  opacity: 0.6;
+  opacity: 0.9;
 }
 
 /* Cell Backgrounds (hover highlight) */
@@ -227,7 +227,7 @@ main {
 }
 
 .node-child-link {
-  fill: var(--vscode-descriptionForeground, #5f6368);
+  fill: var(--vscode-list-activeSelectionForeground, #5f6368);
   font-style: normal;
   font-weight: 400;
   font-size: 12.5px;
@@ -239,14 +239,14 @@ main {
 }
 
 .child-link-dot {
-  fill: var(--vscode-editorLineNumber-foreground, #9AA0A6); /* Match link color */
+  fill: var(--vscode-list-activeSelectionForeground, #9AA0A6); /* Match link color */
   stroke: none;
 }
 /* --- End New Styles --- */
 
 /* Links (now styled directly in D3 component) */
 .link {
-  stroke: var(--vscode-editorLineNumber-foreground, #9AA0A6);
+  stroke: var(--vscode-focusBorder, #9AA0A6);
   stroke-opacity: 0.8;
   stroke-width: 1px;
   fill: none;
