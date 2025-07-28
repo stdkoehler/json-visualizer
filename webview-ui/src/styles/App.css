@@ -4,8 +4,8 @@
 body {
   font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   margin: 0;
-  background-color: #f8f9fa;
-  color: #202124;
+  background-color: var(--vscode-editor-background, #f8f9fa);
+  color: var(--vscode-editor-foreground, #202124);
   height: 100vh;
   overflow: hidden;
 }
@@ -26,30 +26,30 @@ body {
   display: flex;
   flex-direction: column;
   height: 90vh;
-  background-color: #ffffff;
+  background-color: var(--vscode-editorWidget-background, #ffffff);
   border-radius: 12px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
   overflow: hidden;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--vscode-editorWidget-border, #dadce0);
 }
 
 /* Header */
 header {
   padding: 20px 24px;
-  border-bottom: 1px solid #dadce0;
-  background-color: #ffffff;
+  border-bottom: 1px solid var(--vscode-editorWidget-border, #dadce0);
+  background-color: var(--vscode-sideBar-background, #ffffff);
 }
 
 header h1 {
   margin: 0;
   font-size: 1.5rem;
-  color: #202124;
+  color: var(--vscode-sideBar-foreground, #202124);
   font-weight: 500;
 }
 
 header p {
   margin: 8px 0 0;
-  color: #5f6368;
+  color: var(--vscode-descriptionForeground, #5f6368);
   font-size: 0.95rem;
 }
 
@@ -74,15 +74,15 @@ main {
 .editor-pane {
   width: 35%;
   min-width: 350px;
-  border-right: 1px solid #dadce0;
-  background-color: #ffffff;
+  border-right: 1px solid var(--vscode-editorWidget-border, #dadce0);
+  background-color: var(--vscode-editorWidget-background, #ffffff);
 }
 
 .visualization-pane {
   width: 65%;
   position: relative;
   overflow: hidden;
-  background-color: #f8f9fa;
+  background-color: var(--vscode-editor-background, #f8f9fa);
 }
 
 /* JsonEditor Component Styles */
@@ -104,24 +104,24 @@ main {
   resize: none;
   margin: 0;
   padding: 12px;
-  background-color: #ffffff;
-  color: #202124;
+  background-color: var(--vscode-input-background, #ffffff);
+  color: var(--vscode-input-foreground, #202124);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
   transition: border-color 0.2s ease;
 }
 
 .editor-wrapper textarea:focus {
   outline: none;
-  border-color: #4285F4;
-  box-shadow: inset 0 1px 2px rgba(66, 133, 244, 0.1);
+  border-color: var(--vscode-focusBorder, #4285F4);
+  box-shadow: 0 0 0 1px var(--vscode-focusBorder, #4285F4);
 }
 
 .error-message {
   margin-top: 12px;
   padding: 10px 12px;
-  background-color: #fce8e6;
-  color: #d93025;
-  border: 1px solid #fad2cf;
+  background-color: var(--vscode-editorError-background, #fce8e6);
+  color: var(--vscode-editorError-foreground, #d93025);
+  border: 1px solid var(--vscode-editorError-border, #fad2cf);
   border-radius: 8px;
   font-size: 0.9rem;
 }
@@ -133,7 +133,7 @@ main {
   overflow: hidden;
   position: relative;
   border-radius: 8px;
-  background-color: #ffffff;
+  background-color: var(--vscode-editorWidget-background, #ffffff);
   box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.05);
 }
 
@@ -157,7 +157,7 @@ main {
 
 .node-group rect {
   stroke-width: 1.5px;
-  fill: #ffffff;
+  fill: var(--vscode-editorWidget-background, #ffffff);
   cursor: grab;
 }
 
@@ -166,11 +166,11 @@ main {
 }
 
 .node-group rect.object-box {
-  stroke: #4285F4;
+  stroke: var(--vscode-focusBorder, #4285F4);
 }
 
 .node-group rect.array-box {
-  stroke: #34A853;
+  stroke: var(--vscode-symbolIcon-arrayForeground, #34A853);
   stroke-dasharray: 5 3;
 }
 
@@ -178,7 +178,7 @@ main {
 .node-text {
   font-size: 13px;
   font-family: 'Roboto Mono', monospace;
-  fill: #202124;
+  fill: var(--vscode-editor-foreground, #202124);
   user-select: none;
   pointer-events: none;
 }
@@ -186,7 +186,7 @@ main {
 .node-title {
   font-weight: 600;
   font-size: 14px;
-  fill: #202124;
+  fill: var(--vscode-editor-foreground, #202124);
 }
 
 .node-field {
@@ -194,17 +194,17 @@ main {
 }
 
 .field-key {
-  fill: #202124;
+  fill: var(--vscode-editor-foreground, #202124);
   font-weight: 500;
 }
 
 .field-value {
-  fill: #d93025;
+  fill: var(--vscode-editorError-foreground, #d93025);
   font-weight: 400;
 }
 
 .node-child-link {
-  fill: #5f6368;
+  fill: var(--vscode-descriptionForeground, #5f6368);
   font-style: normal;
   font-weight: 400;
   font-size: 12.5px;
@@ -216,14 +216,14 @@ main {
 }
 
 .child-link-dot {
-  fill: #9AA0A6; /* Match link color */
+  fill: var(--vscode-editorLineNumber-foreground, #9AA0A6); /* Match link color */
   stroke: none;
 }
 /* --- End New Styles --- */
 
 /* Links (now styled directly in D3 component) */
 .link {
-  stroke: #9AA0A6;
+  stroke: var(--vscode-editorLineNumber-foreground, #9AA0A6);
   stroke-opacity: 0.8;
   stroke-width: 1px;
   fill: none;

@@ -28,6 +28,8 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background: var(--vscode-editor-background, #181818);
+  color: var(--vscode-editor-foreground, #e0e0e0);
 }
 
 h1 {
