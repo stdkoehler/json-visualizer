@@ -149,6 +149,29 @@ main {
 }
 
 /* --- D3 Specific Styles --- */
+/* Marker Arrowhead */
+.arrowhead-path {
+  fill: var(--vscode-editorLineNumber-foreground, #9AA0A6);
+}
+
+/* Cell Dividers */
+.cell-divider-top,
+.cell-divider-bottom {
+  stroke: var(--vscode-editorWidget-border, #e1e4e8);
+  stroke-width: 0.5px;
+  opacity: 0.6;
+}
+
+/* Cell Backgrounds (hover highlight) */
+.cell-background {
+  fill: var(--vscode-editorWidget-background, #f6f8fa);
+  stroke: none;
+}
+
+/* Child Link Dot Active State */
+.child-link-dot.active {
+  fill: var(--vscode-focusBorder, #4285F4) !important;
+}
 
 /* Node Groups */
 .node-group {

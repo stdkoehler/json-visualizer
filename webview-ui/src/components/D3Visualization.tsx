@@ -117,7 +117,7 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
       .attr("markerHeight", 6)
       .append("path")
       .attr("d", "M0,-5L10,0L0,5")
-      .attr("fill", "#9AA0A6");
+      .attr("class", "arrowhead-path");
 
     // --- Nodes ---
     const nodeGroup = g.append("g").attr("class", "nodes");
@@ -139,10 +139,7 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
       .attr("height", (d) => (d as any).height)
       .attr("x", 0)
       .attr("y", (d) => -(d as any).height / 2)
-      .attr("rx", 6)
-      .attr("fill", "#fff")
-      .attr("stroke", (d) => (d.data.type === "object" ? "#4285F4" : "#34A853"))
-      .attr("stroke-width", 1.5);
+      .attr("rx", 6);
 
     // Node Title (key name)
     node
@@ -238,10 +235,7 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
           .attr("x1", leftPadding)
           .attr("x2", (d as any).width - dotAreaWidth)
           .attr("y1", cell.y)
-          .attr("y2", cell.y)
-          .attr("stroke", "#e1e4e8")
-          .attr("stroke-width", 0.5)
-          .attr("opacity", 0.6);
+          .attr("y2", cell.y);
 
         // Bottom divider for last cell
         if (index === cellData.length - 1) {
@@ -251,10 +245,7 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
             .attr("x1", leftPadding)
             .attr("x2", (d as any).width - dotAreaWidth)
             .attr("y1", cell.y + cell.height)
-            .attr("y2", cell.y + cell.height)
-            .attr("stroke", "#e1e4e8")
-            .attr("stroke-width", 0.5)
-            .attr("opacity", 0.6);
+            .attr("y2", cell.y + cell.height);
         }
 
         // Step 6: Hover areas
@@ -276,8 +267,6 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
           .attr("y", cell.y)
           .attr("width", (d as any).width - 2)
           .attr("height", cell.height)
-          .attr("fill", "#f6f8fa")
-          .attr("stroke", "none")
           .attr("opacity", 0)
           .attr("rx", 3);
 
@@ -400,23 +389,20 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
           .attr("data-cell-index", dot.index)
           .attr("cx", (d as any).width) // Right edge of the node
           .attr("cy", dot.y) // Same Y as text
-          .attr("r", DOT_RADIUS)
-          .attr("fill", "#9AA0A6");
+          .attr("r", DOT_RADIUS);
       });
     });
 
     // Step 5: Fix connector positioning - render links after nodes are positioned
     const linkGroup = g
       .append("g")
-      .attr("fill", "none")
-      .attr("stroke", "#9AA0A6")
-      .attr("stroke-opacity", 0.8)
-      .attr("stroke-width", 1);
+      .attr("class", "d3-link-group");
 
     linkGroup
       .selectAll<SVGPathElement, d3.HierarchyLink<HierarchyNode>>("path")
       .data(root.links())
       .join("path")
+      .attr("class", "link")
       .attr("marker-end", "url(#arrowhead)")
       .attr("d", (d) => {
         const sourceNode = d.source as d3.HierarchyNode<HierarchyNode> & {
