@@ -33,6 +33,32 @@ body {
   border: 1px solid var(--vscode-editorWidget-border, #dadce0);
 }
 
+/* Styled buttons for expand/collapse */
+header button {
+  background: var(--vscode-button-background, linear-gradient(90deg, #4f8cff 0%, #38c6ff 100%));
+  color: var(--vscode-button-foreground, #fff);
+  border: none;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(79, 140, 255, 0.08);
+  transition: background 0.2s, transform 0.1s;
+}
+
+header button:hover, header button:focus {
+  background: var(--vscode-button-hoverBackground, linear-gradient(90deg, #357ae8 0%, #1fa7e6 100%));
+  color: var(--vscode-button-foreground, #fff);
+  transform: translateY(-2px) scale(1.04);
+  outline: none;
+}
+
+header button:active {
+  background: var(--vscode-button-background, linear-gradient(90deg, #2c5fb8 0%, #178bb8 100%));
+  color: var(--vscode-button-foreground, #fff);
+  transform: scale(0.98);
+}
 /* Header */
 header {
   padding: 20px 24px;
@@ -151,7 +177,7 @@ main {
 /* --- D3 Specific Styles --- */
 /* Marker Arrowhead */
 .arrowhead-path {
-  fill: var(--vscode-editorLineNumber-foreground, #9AA0A6);
+  fill: var(--vscode-list-activeSelectionForeground, #9AA0A6);
 }
 
 /* Cell Dividers */
@@ -246,7 +272,7 @@ main {
 
 /* Links (now styled directly in D3 component) */
 .link {
-  stroke: var(--vscode-focusBorder, #9AA0A6);
+  stroke: var(--vscode-list-activeSelectionForeground, #9AA0A6);
   stroke-opacity: 0.8;
   stroke-width: 1px;
   fill: none;
