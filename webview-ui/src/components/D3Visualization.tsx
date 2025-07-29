@@ -210,12 +210,12 @@ function renderCellText(
 
         switch (child.type) {
           case "array":
-          postfix = ": []";
-          typeClass = "node-text-array";
+            postfix = ": []";
+            typeClass = "node-text-array";
             break;
           case "object":
-          postfix = ": {}";
-          typeClass = "node-text-object";
+            postfix = ": {}";
+            typeClass = "node-text-object";
             break;
         }
 
@@ -516,12 +516,34 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
         lineCount * LINE_HEIGHT + PADDING * 2 + TITLE_SPACING;
     });
 
+
+    // First, run the tree layout with a dummy horizontal value
     const treeLayout: d3.TreeLayout<HierarchyNode> = d3
       .tree<HierarchyNode>()
-      .nodeSize([220, 280])
+      .nodeSize([220, 200]) // horizontal value is a placeholder
       .separation((a, b) => (a.parent === b.parent ? 1 : 1.2));
 
     treeLayout(root);
+
+    // Now, adjust y positions to accumulate widths of all parent nodes
+    // so that each child is placed to the right of its parent, with spacing
+    const HORIZONTAL_MARGIN = 100;
+    function adjustYPositions(node: CustomHierarchyNode, parentY: number = 0, parentWidth: number = 0) {
+      // Place this node to the right of its parent
+      node.y = parentY + parentWidth + HORIZONTAL_MARGIN;
+      if (node.children) {
+        node.children.forEach((child) => {
+          adjustYPositions(child as CustomHierarchyNode, node.y, node.width);
+        });
+      }
+    }
+    // Root node stays at y=0
+    root.y = 0;
+    if (root.children) {
+      root.children.forEach((child) => {
+        adjustYPositions(child as CustomHierarchyNode, root.y, root.width);
+      });
+    }
 
     const g = svg.append("g");
 
