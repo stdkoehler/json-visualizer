@@ -1,11 +1,9 @@
 // src/utils/types.ts
 
-
-
 export interface PrimitiveArrayItem {
   name: string;
   value: unknown;
-  type: 'primitive';
+  type: "primitive";
 }
 
 export type HierarchyArrayItem =
@@ -14,7 +12,8 @@ export type HierarchyArrayItem =
 
 export interface HierarchyNode {
   name: string;
-  type: 'object' | 'array';
+  type: "object" | "array";
+  classname?: string;
   // For objects:
   children?: HierarchyNode[];
   fields?: { name: string; value: unknown }[];
@@ -27,19 +26,23 @@ export interface HierarchyNode {
 // Type guard for HierarchyNode
 export function isHierarchyNode(item: unknown): item is HierarchyNode {
   return (
-    typeof item === 'object' &&
-    item !== null &&
-    'type' in item &&
-    (item as { type?: unknown }).type === 'object' || (item as { type?: unknown }).type === 'array'
+    (typeof item === "object" &&
+      item !== null &&
+      "type" in item &&
+      (item as { type?: unknown }).type === "object") ||
+    (item as { type?: unknown }).type === "array" ||
+    (item as { type?: unknown }).type === "class"
   );
 }
 
 // Type guard for PrimitiveArrayItem
-export function isPrimitiveArrayItem(item: unknown): item is PrimitiveArrayItem {
+export function isPrimitiveArrayItem(
+  item: unknown
+): item is PrimitiveArrayItem {
   return (
-    typeof item === 'object' &&
+    typeof item === "object" &&
     item !== null &&
-    'type' in item &&
-    (item as { type?: unknown }).type === 'primitive'
+    "type" in item &&
+    (item as { type?: unknown }).type === "primitive"
   );
 }
