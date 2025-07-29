@@ -205,14 +205,22 @@ function renderCellText(
       node.data.children.forEach((child, index) => {
         const cellIndex = fieldCount + index;
         const cell = cellData[cellIndex];
-        let postfix = "";
         let typeClass = "";
-        if (child.type === "array") {
+        let postfix = "";
+
+        switch (child.type) {
+          case "array":
           postfix = ": []";
           typeClass = "node-text-array";
-        } else if (child.type === "object") {
+            break;
+          case "object":
           postfix = ": {}";
           typeClass = "node-text-object";
+            break;
+        }
+
+        if (child.classname !== undefined) {
+          postfix = `: ${child.classname}`;
         }
         parent
           .append("text")
@@ -220,7 +228,10 @@ function renderCellText(
           .attr("x", PADDING + 10)
           .attr("y", cell.textY)
           .attr("dominant-baseline", "middle")
-          .text(`${child.name}${postfix}`);
+          .text(`${child.name}`)
+          .append("tspan")
+          .text(`${postfix}`)
+          .attr("font-style", "italic");
       });
     }
   } else if (node.data.type === "array" && node.data.items) {
@@ -242,7 +253,7 @@ function renderCellText(
           .text(`${JSON.stringify(item.value)}`)
           .attr("class", "field-value");
       } else if (isHierarchyNode(item)) {
-        const postfix = item.type === "object" ? "{}" : "[]";
+        const postfix = item?.classname ?? (item.type === "object" ? "{}" : "[]");
         const text = parent
           .append("text")
           .attr("class", "node-text node-child-link")
@@ -480,7 +491,7 @@ const D3Visualization: React.FC<D3VisualizationWithExpandProps> = ({ data, expan
         }
         if (node.data.children) {
           node.data.children.forEach((c) => {
-            const text = `${c.name}`;
+            const text = `${c.name}: {} ${c.classname}`;
             maxTextWidth = Math.max(maxTextWidth, text.length * CHAR_WIDTH);
             lineCount++;
           });
